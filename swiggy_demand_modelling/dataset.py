@@ -41,6 +41,7 @@ def is_promotion_active(day_of_week):
     return None
 
 def generate_order_volume(hour, is_peak, weather, promotion):
+    # Adjusted demand based on time, weather, and promotions
     base_demand = 100 if not is_peak else 300
     weather_multiplier = 1.2 if weather == "Rainy" else 1.0
     promo_multiplier = 1.3 if promotion else 1.0
@@ -86,56 +87,46 @@ def generate_additional_features():
 
 @app.command()
 def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    input_path: Path = RAW_DATA_DIR / "dataset.csv",
-    output_path: Path = PROCESSED_DATA_DIR / "dataset.csv",
-    # ----------------------------------------------
+    input_path: Path = Path("raw_dataset.csv"),
+    output_path: Path = Path("processed_dataset.csv"),
 ):
-    
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info("Processing dataset...")
-    with tqdm(total=50000, desc="Generating data") as pbar:
-        while len(data) < 50000:
-            for date in hourly_date_range:
-                hour = date.hour
-                day_of_week = date.weekday()  # Monday=0, Sunday=6
-                is_peak = hour in [7, 8, 9, 18, 19, 20]  # Peak hours
-                weather = generate_weather()
-                traffic = generate_traffic()
-                holiday_flag = is_holiday(date)
-                promotion = is_promotion_active(day_of_week)
+    with tqdm(total=len(hourly_date_range) * len(locations) * len(products), desc="Generating data") as pbar:
+        for date in hourly_date_range:
+            hour = date.hour
+            day_of_week = date.weekday()
+            day_name = date.strftime("%A")
+            is_peak = hour in [7, 8, 9, 18, 19, 20]  # Peak hours
+            weather = generate_weather()
+            traffic = generate_traffic()
+            holiday_flag = is_holiday(date)
+            promotion = is_promotion_active(day_of_week)
 
-                for location in locations:
-                    for product in products:
-                        order_volume = generate_order_volume(hour, is_peak, weather, promotion)
-                        additional_features = generate_additional_features()
-                        row = {
-                            "Date": date.date(),
-                            "Hour": hour,
-                            "Day_of_Week": date.strftime("%A"),
-                            "Location": location,
-                            "Product": product,
-                            "Order_Volume": order_volume,
-                            "Weather": weather,
-                            "Traffic": traffic,
-                            "Is_Holiday": holiday_flag,
-                            "Promotion": promotion if promotion else "None",
-                            "Delivery_Time": random.uniform(15, 40) + (5 if weather == "Rainy" else 0),
-                            "Cancellation_Rate": random.uniform(0.01, 0.1) if weather == "Rainy" else random.uniform(0.0, 0.05),
-                            **additional_features
-                        }
-                        data.append(row)
-                        pbar.update(1)
-                        if len(data) >= 50000:
-                            break
-                    if len(data) >= 50000:
-                        break
-                if len(data) >= 50000:
-                    break
+            for location in locations:
+                for product in products:
+                    order_volume = generate_order_volume(hour, is_peak, weather, promotion)
+                    additional_features = generate_additional_features()
+                    row = {
+                        "DateTime": date,  
+                        "Date": date.date(),  # Only the date part
+                        "Hour": hour,  # Hour of the day
+                        "Day_of_Week": day_name,  # Weekday name
+                        "Location": location,
+                        "Product": product,
+                        "Order_Volume": order_volume,
+                        "Weather": weather,
+                        "Traffic": traffic,
+                        "Is_Holiday": holiday_flag,
+                        "Promotion": promotion if promotion else "None",
+                        **additional_features,  # Additional features
+                    }
+                    data.append(row)
+                    pbar.update(1)
+
     forecasting_data = pd.DataFrame(data)
+    print(forecasting_data.columns)
     forecasting_data.to_csv(output_path, index=False)
-    logger.success("Processing dataset complete.")
-    # -----------------------------------------
+    logger.success(f"Dataset saved to {output_path}")
 
 if __name__ == "__main__":
     app()
