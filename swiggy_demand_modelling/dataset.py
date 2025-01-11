@@ -8,7 +8,7 @@ import random
 from datetime import datetime, timedelta
 from tqdm import tqdm
 from swiggy_demand_modelling.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
-
+from backend.utils import filter_data, forecast_for_all
 app = typer.Typer()
 
 # Configuration
@@ -124,7 +124,7 @@ def main(
                     pbar.update(1)
 
     forecasting_data = pd.DataFrame(data)
-    print(forecasting_data.columns)
+    
     forecasting_data.to_csv(output_path, index=False)
     logger.success(f"Dataset saved to {output_path}")
 
